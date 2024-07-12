@@ -1,8 +1,8 @@
 [project]
-name = "open-webui"
-description = "Open WebUI (Formerly Ollama WebUI)"
+name = "sustella-studio"
+description = "Advanced Multi Agent Systems for a Sustainable Future"
 authors = [
-    { name = "Timothy Jaeryang Baek", email = "tim@openwebui.com" }
+    { name = "Arijit Das", email = "arijit.das@selfsupervised.de" }
 ]
 license = { file = "LICENSE" }
 dependencies = [
@@ -83,7 +83,7 @@ classifiers = [
 ]
 
 [project.scripts]
-open-webui = "open_webui:app"
+sustella-studio = "sustella_studio:app"
 
 [build-system]
 requires = ["hatchling"]
