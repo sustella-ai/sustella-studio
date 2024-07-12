@@ -17,7 +17,6 @@ from constants import ERROR_MESSAGES
 from utils.utils import (
     decode_token,
     get_verified_user,
-    get_verified_user,
     get_admin_user,
 )
 from utils.task import prompt_template
@@ -179,10 +178,10 @@ async def speech(request: Request, user=Depends(get_verified_user)):
 
             raise HTTPException(
                 status_code=r.status_code if r else 500, detail=error_detail
-            )
+            ) from e
 
-    except ValueError:
-        raise HTTPException(status_code=401, detail=ERROR_MESSAGES.OPENAI_NOT_FOUND)
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=ERROR_MESSAGES.OPENAI_NOT_FOUND) from e
 
 
 async def fetch_url(url, key):
@@ -298,7 +297,7 @@ async def get_all_models(raw: bool = False):
 @app.get("/models")
 @app.get("/models/{url_idx}")
 async def get_models(url_idx: Optional[int] = None, user=Depends(get_verified_user)):
-    if url_idx == None:
+    if url_idx is None:
         models = await get_all_models()
         if app.state.config.ENABLE_MODEL_FILTER:
             if user.role == "user":
@@ -345,7 +344,7 @@ async def get_models(url_idx: Optional[int] = None, user=Depends(get_verified_us
             raise HTTPException(
                 status_code=r.status_code if r else 500,
                 detail=error_detail,
-            )
+            ) from e
 
 
 @app.post("/chat/completions")
@@ -501,7 +500,7 @@ async def generate_chat_completion(
                     error_detail = f"External: {res['error']['message'] if 'message' in res['error'] else res['error']}"
             except:
                 error_detail = f"External: {e}"
-        raise HTTPException(status_code=r.status if r else 500, detail=error_detail)
+        raise HTTPException(status_code=r.status if r else 500, detail=error_detail) from e
     finally:
         if not streaming and session:
             if r:
@@ -564,7 +563,7 @@ async def proxy(path: str, request: Request, user=Depends(get_verified_user)):
                     error_detail = f"External: {res['error']['message'] if 'message' in res['error'] else res['error']}"
             except:
                 error_detail = f"External: {e}"
-        raise HTTPException(status_code=r.status if r else 500, detail=error_detail)
+        raise HTTPException(status_code=r.status if r else 500, detail=error_detail) from e
     finally:
         if not streaming and session:
             if r:

@@ -9,7 +9,9 @@ from fastapi import (
 )
 from fastapi.middleware.cors import CORSMiddleware
 import requests
-import os, shutil, logging, re
+import os
+import shutil
+import logging
 from datetime import datetime
 
 from pathlib import Path
@@ -359,7 +361,7 @@ async def update_embedding_config(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=ERROR_MESSAGES.DEFAULT(e),
-        )
+        ) from e
 
 
 class RerankingModelUpdateForm(BaseModel):
@@ -387,7 +389,7 @@ async def update_reranking_config(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=ERROR_MESSAGES.DEFAULT(e),
-        )
+        ) from e
 
 
 @app.get("/config")
@@ -638,7 +640,7 @@ def query_doc_handler(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=ERROR_MESSAGES.DEFAULT(e),
-        )
+        ) from e
 
 
 class QueryCollectionsForm(BaseModel):
@@ -679,7 +681,7 @@ def query_collection_handler(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=ERROR_MESSAGES.DEFAULT(e),
-        )
+        ) from e
 
 
 @app.post("/youtube")
@@ -708,7 +710,7 @@ def store_youtube_video(form_data: UrlForm, user=Depends(get_verified_user)):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=ERROR_MESSAGES.DEFAULT(e),
-        )
+        ) from e
 
 
 @app.post("/web")
@@ -736,7 +738,7 @@ def store_web(form_data: UrlForm, user=Depends(get_verified_user)):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=ERROR_MESSAGES.DEFAULT(e),
-        )
+        ) from e
 
 
 def get_web_loader(url: Union[str, Sequence[str]], verify_ssl: bool = True):
@@ -905,7 +907,7 @@ def store_web_search(form_data: SearchForm, user=Depends(get_verified_user)):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=ERROR_MESSAGES.WEB_SEARCH_ERROR(e),
-        )
+        ) from e
 
     try:
         urls = [result.link for result in web_results]
@@ -927,7 +929,7 @@ def store_web_search(form_data: SearchForm, user=Depends(get_verified_user)):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=ERROR_MESSAGES.DEFAULT(e),
-        )
+        ) from e
 
 
 def store_data_in_vector_db(data, collection_name, overwrite: bool = False) -> bool:
@@ -1173,7 +1175,7 @@ def store_doc(
             f.close()
 
         f = open(file_path, "rb")
-        if collection_name == None:
+        if collection_name is None:
             collection_name = calculate_sha256(f)[:63]
         f.close()
 
@@ -1194,19 +1196,19 @@ def store_doc(
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=e,
-            )
+            ) from e
     except Exception as e:
         log.exception(e)
         if "No pandoc was found" in str(e):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=ERROR_MESSAGES.PANDOC_NOT_INSTALLED,
-            )
+            ) from e
         else:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=ERROR_MESSAGES.DEFAULT(e),
-            )
+            ) from e
 
 
 class ProcessDocForm(BaseModel):
@@ -1226,7 +1228,7 @@ def process_doc(
         f = open(file_path, "rb")
 
         collection_name = form_data.collection_name
-        if collection_name == None:
+        if collection_name is None:
             collection_name = calculate_sha256(f)[:63]
         f.close()
 
@@ -1248,19 +1250,19 @@ def process_doc(
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=e,
-            )
+            ) from e
     except Exception as e:
         log.exception(e)
         if "No pandoc was found" in str(e):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=ERROR_MESSAGES.PANDOC_NOT_INSTALLED,
-            )
+            ) from e
         else:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=ERROR_MESSAGES.DEFAULT(e),
-            )
+            ) from e
 
 
 class TextRAGForm(BaseModel):
@@ -1275,7 +1277,7 @@ def store_text(
     user=Depends(get_verified_user),
 ):
     collection_name = form_data.collection_name
-    if collection_name == None:
+    if collection_name is None:
         collection_name = calculate_sha256_string(form_data.content)
 
     result = store_text_in_vector_db(
@@ -1318,7 +1320,7 @@ def scan_docs_dir(user=Depends(get_admin_user)):
                         sanitized_filename = sanitize_filename(filename)
                         doc = Documents.get_doc_by_name(sanitized_filename)
 
-                        if doc == None:
+                        if doc is None:
                             doc = Documents.insert_new_doc(
                                 user.id,
                                 DocumentForm(
