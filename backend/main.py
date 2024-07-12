@@ -1,124 +1,116 @@
 import base64
+import inspect
+import json
+import logging
+import mimetypes
+import os
+import shutil
+import sys
+import time
 import uuid
 from contextlib import asynccontextmanager
+from typing import List, Optional
 
-from authlib.integrations.starlette_client import OAuth
-from authlib.oidc.core import UserInfo
-import json
-import time
-import os
-import sys
-import logging
 import aiohttp
 import requests
-import mimetypes
-import shutil
-import inspect
-
-from fastapi import FastAPI, Request, Depends, status, UploadFile, File, Form
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import JSONResponse
-from fastapi import HTTPException
+from apps.audio.main import app as audio_app
+from apps.images.main import app as images_app
+from apps.ollama.main import app as ollama_app
+from apps.ollama.main import (
+    generate_openai_chat_completion as generate_ollama_chat_completion,
+)
+from apps.ollama.main import get_all_models as get_ollama_models
+from apps.openai.main import app as openai_app
+from apps.openai.main import generate_chat_completion as generate_openai_chat_completion
+from apps.openai.main import get_all_models as get_openai_models
+from apps.rag.main import app as rag_app
+from apps.rag.utils import get_rag_context, rag_template
+from apps.socket.main import app as socket_app
+from apps.socket.main import sio
+from apps.webui.internal.db import Session
+from apps.webui.main import app as webui_app
+from apps.webui.main import generate_function_chat_completion, get_pipe_models
+from apps.webui.models.auths import Auths
+from apps.webui.models.functions import Functions
+from apps.webui.models.models import Models
+from apps.webui.models.tools import Tools
+from apps.webui.models.users import Users
+from apps.webui.utils import load_function_module_by_id, load_toolkit_module_by_id
+from authlib.integrations.starlette_client import OAuth
+from authlib.oidc.core import UserInfo
+from config import (
+    CACHE_DIR,
+    CHANGELOG,
+    DEFAULT_LOCALE,
+    ENABLE_ADMIN_EXPORT,
+    ENABLE_MODEL_FILTER,
+    ENABLE_OAUTH_SIGNUP,
+    ENABLE_OLLAMA_API,
+    ENABLE_OPENAI_API,
+    ENV,
+    FRONTEND_BUILD_DIR,
+    GLOBAL_LOG_LEVEL,
+    MODEL_FILTER_LIST,
+    OAUTH_MERGE_ACCOUNTS_BY_EMAIL,
+    OAUTH_PROVIDERS,
+    SAFE_MODE,
+    SEARCH_QUERY_GENERATION_PROMPT_TEMPLATE,
+    SEARCH_QUERY_PROMPT_LENGTH_THRESHOLD,
+    SRC_LOG_LEVELS,
+    STATIC_DIR,
+    TASK_MODEL,
+    TASK_MODEL_EXTERNAL,
+    TITLE_GENERATION_PROMPT_TEMPLATE,
+    TOOLS_FUNCTION_CALLING_PROMPT_TEMPLATE,
+    VERSION,
+    WEBHOOK_URL,
+    WEBUI_AUTH,
+    WEBUI_BUILD_HASH,
+    WEBUI_NAME,
+    WEBUI_SECRET_KEY,
+    WEBUI_SESSION_COOKIE_SAME_SITE,
+    WEBUI_SESSION_COOKIE_SECURE,
+    WEBUI_URL,
+    AppConfig,
+)
+from constants import ERROR_MESSAGES, TASKS, WEBHOOK_MESSAGES
+from fastapi import (
+    Depends,
+    FastAPI,
+    File,
+    Form,
+    HTTPException,
+    Request,
+    UploadFile,
+    status,
+)
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
 from sqlalchemy import text
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
-from starlette.responses import StreamingResponse, Response, RedirectResponse
-
-
-from apps.socket.main import sio, app as socket_app
-from apps.ollama.main import (
-    app as ollama_app,
-    get_all_models as get_ollama_models,
-    generate_openai_chat_completion as generate_ollama_chat_completion,
+from starlette.responses import RedirectResponse, Response, StreamingResponse
+from utils.misc import (
+    add_or_update_system_message,
+    get_last_user_message,
+    parse_duration,
 )
-from apps.openai.main import (
-    app as openai_app,
-    get_all_models as get_openai_models,
-    generate_chat_completion as generate_openai_chat_completion,
+from utils.task import (
+    search_query_generation_template,
+    title_generation_template,
+    tools_function_calling_generation_template,
 )
-
-from apps.audio.main import app as audio_app
-from apps.images.main import app as images_app
-from apps.rag.main import app as rag_app
-from apps.webui.main import (
-    app as webui_app,
-    get_pipe_models,
-    generate_function_chat_completion,
-)
-from apps.webui.internal.db import Session
-
-
-from pydantic import BaseModel
-from typing import List, Optional
-
-from apps.webui.models.auths import Auths
-from apps.webui.models.models import Models
-from apps.webui.models.tools import Tools
-from apps.webui.models.functions import Functions
-from apps.webui.models.users import Users
-
-from apps.webui.utils import load_toolkit_module_by_id, load_function_module_by_id
-
 from utils.utils import (
+    create_token,
     get_admin_user,
-    get_verified_user,
     get_current_user,
     get_http_authorization_cred,
     get_password_hash,
-    create_token,
+    get_verified_user,
 )
-from utils.task import (
-    title_generation_template,
-    search_query_generation_template,
-    tools_function_calling_generation_template,
-)
-from utils.misc import (
-    get_last_user_message,
-    add_or_update_system_message,
-    parse_duration,
-)
-
-from apps.rag.utils import get_rag_context, rag_template
-
-from config import (
-    WEBUI_NAME,
-    WEBUI_URL,
-    WEBUI_AUTH,
-    ENV,
-    VERSION,
-    CHANGELOG,
-    FRONTEND_BUILD_DIR,
-    CACHE_DIR,
-    STATIC_DIR,
-    DEFAULT_LOCALE,
-    ENABLE_OPENAI_API,
-    ENABLE_OLLAMA_API,
-    ENABLE_MODEL_FILTER,
-    MODEL_FILTER_LIST,
-    GLOBAL_LOG_LEVEL,
-    SRC_LOG_LEVELS,
-    WEBHOOK_URL,
-    ENABLE_ADMIN_EXPORT,
-    WEBUI_BUILD_HASH,
-    TASK_MODEL,
-    TASK_MODEL_EXTERNAL,
-    TITLE_GENERATION_PROMPT_TEMPLATE,
-    SEARCH_QUERY_GENERATION_PROMPT_TEMPLATE,
-    SEARCH_QUERY_PROMPT_LENGTH_THRESHOLD,
-    TOOLS_FUNCTION_CALLING_PROMPT_TEMPLATE,
-    SAFE_MODE,
-    OAUTH_PROVIDERS,
-    ENABLE_OAUTH_SIGNUP,
-    OAUTH_MERGE_ACCOUNTS_BY_EMAIL,
-    WEBUI_SECRET_KEY,
-    WEBUI_SESSION_COOKIE_SAME_SITE,
-    WEBUI_SESSION_COOKIE_SECURE,
-    AppConfig,
-)
-
-from constants import ERROR_MESSAGES, WEBHOOK_MESSAGES, TASKS
 from utils.webhook import post_webhook
 
 if SAFE_MODE:
@@ -160,8 +152,8 @@ https://github.com/sustella-ai/sustella-studio
 
 def run_migrations():
     try:
-        from alembic.config import Config
         from alembic import command
+        from alembic.config import Config
 
         alembic_cfg = Config("alembic.ini")
         command.upgrade(alembic_cfg, "head")
@@ -815,10 +807,10 @@ def filter_pipeline(payload, user):
             # Handle connection error here
             print(f"Connection error: {e}")
 
-            if r is not None:
-                res = r.json()
-                if "detail" in res:
-                    raise Exception(r.status_code, res["detail"])
+        if r is not None:
+            res = r.json()
+            if "detail" in res:
+                raise Exception(r.status_code, res["detail"])
 
     if "pipeline" not in app.state.MODELS[model_id] and "task" in payload:
         del payload["task"]
@@ -960,7 +952,7 @@ async def get_all_models():
 
     custom_models = Models.get_all_models()
     for custom_model in custom_models:
-        if custom_model.base_model_id == None:
+        if custom_model.base_model_id is None:
             for model in models:
                 if (
                     custom_model.id == model["id"]
@@ -1493,7 +1485,7 @@ async def get_pipelines_list(user=Depends(get_admin_user)):
     urlIdxs = [
         idx
         for idx, response in enumerate(responses)
-        if response != None and "pipelines" in response
+        if response is not None and "pipelines" in response
     ]
 
     return {
@@ -1560,7 +1552,7 @@ async def upload_pipeline(
         raise HTTPException(
             status_code=status_code,
             detail=detail,
-        )
+        ) from e
     finally:
         # Ensure the file is deleted after the upload is completed or on failure
         if os.path.exists(file_path):
@@ -1606,7 +1598,7 @@ async def add_pipeline(form_data: AddPipelineForm, user=Depends(get_admin_user))
         raise HTTPException(
             status_code=(r.status_code if r is not None else status.HTTP_404_NOT_FOUND),
             detail=detail,
-        )
+        ) from e
 
 
 class DeletePipelineForm(BaseModel):
@@ -1648,7 +1640,7 @@ async def delete_pipeline(form_data: DeletePipelineForm, user=Depends(get_admin_
         raise HTTPException(
             status_code=(r.status_code if r is not None else status.HTTP_404_NOT_FOUND),
             detail=detail,
-        )
+        ) from e
 
 
 @app.get("/api/pipelines")
@@ -1681,7 +1673,7 @@ async def get_pipelines(urlIdx: Optional[int] = None, user=Depends(get_admin_use
         raise HTTPException(
             status_code=(r.status_code if r is not None else status.HTTP_404_NOT_FOUND),
             detail=detail,
-        )
+        ) from e
 
 
 @app.get("/api/pipelines/{pipeline_id}/valves")
@@ -1720,7 +1712,7 @@ async def get_pipeline_valves(
         raise HTTPException(
             status_code=(r.status_code if r is not None else status.HTTP_404_NOT_FOUND),
             detail=detail,
-        )
+        ) from e
 
 
 @app.get("/api/pipelines/{pipeline_id}/valves/spec")
@@ -1759,7 +1751,7 @@ async def get_pipeline_valves_spec(
         raise HTTPException(
             status_code=(r.status_code if r is not None else status.HTTP_404_NOT_FOUND),
             detail=detail,
-        )
+        ) from e
 
 
 @app.post("/api/pipelines/{pipeline_id}/valves/update")
@@ -1804,7 +1796,7 @@ async def update_pipeline_valves(
         raise HTTPException(
             status_code=(r.status_code if r is not None else status.HTTP_404_NOT_FOUND),
             detail=detail,
-        )
+        ) from e
 
 
 ##################################
@@ -1925,7 +1917,7 @@ async def get_app_latest_release_version():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=ERROR_MESSAGES.RATE_LIMIT_EXCEEDED,
-        )
+        ) from e
 
 
 ############################
@@ -1979,7 +1971,7 @@ async def oauth_callback(provider: str, request: Request, response: Response):
         token = await client.authorize_access_token(request)
     except Exception as e:
         log.warning(f"OAuth callback error: {e}")
-        raise HTTPException(400, detail=ERROR_MESSAGES.INVALID_CRED)
+        raise HTTPException(400, detail=ERROR_MESSAGES.INVALID_CRED) from e
     user_data: UserInfo = token["userinfo"]
 
     sub = user_data.get("sub")
