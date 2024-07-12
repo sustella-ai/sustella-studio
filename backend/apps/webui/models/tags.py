@@ -77,10 +77,8 @@ class ChatTagsResponse(BaseModel):
 
 
 class TagTable:
-
     def insert_new_tag(self, name: str, user_id: str) -> Optional[TagModel]:
         with get_db() as db:
-
             id = str(uuid.uuid4())
             tag = TagModel(**{"id": id, "user_id": user_id, "name": name})
             try:
@@ -161,7 +159,6 @@ class TagTable:
         self, chat_id: str, user_id: str
     ) -> List[TagModel]:
         with get_db() as db:
-
             tag_names = [
                 chat_id_tag.tag_name
                 for chat_id_tag in (
@@ -186,7 +183,6 @@ class TagTable:
         self, tag_name: str, user_id: str
     ) -> List[ChatIdTagModel]:
         with get_db() as db:
-
             return [
                 ChatIdTagModel.model_validate(chat_id_tag)
                 for chat_id_tag in (
@@ -201,7 +197,6 @@ class TagTable:
         self, tag_name: str, user_id: str
     ) -> int:
         with get_db() as db:
-
             return (
                 db.query(ChatIdTag)
                 .filter_by(tag_name=tag_name, user_id=user_id)
@@ -236,7 +231,6 @@ class TagTable:
     ) -> bool:
         try:
             with get_db() as db:
-
                 res = (
                     db.query(ChatIdTag)
                     .filter_by(tag_name=tag_name, chat_id=chat_id, user_id=user_id)

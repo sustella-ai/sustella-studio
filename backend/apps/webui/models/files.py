@@ -59,10 +59,8 @@ class FileForm(BaseModel):
 
 
 class FilesTable:
-
     def insert_new_file(self, user_id: str, form_data: FileForm) -> Optional[FileModel]:
         with get_db() as db:
-
             file = FileModel(
                 **{
                     **form_data.model_dump(),
@@ -86,7 +84,6 @@ class FilesTable:
 
     def get_file_by_id(self, id: str) -> Optional[FileModel]:
         with get_db() as db:
-
             try:
                 file = db.get(File, id)
                 return FileModel.model_validate(file)
@@ -95,13 +92,10 @@ class FilesTable:
 
     def get_files(self) -> List[FileModel]:
         with get_db() as db:
-
             return [FileModel.model_validate(file) for file in db.query(File).all()]
 
     def delete_file_by_id(self, id: str) -> bool:
-
         with get_db() as db:
-
             try:
                 db.query(File).filter_by(id=id).delete()
                 db.commit()
@@ -111,9 +105,7 @@ class FilesTable:
                 return False
 
     def delete_all_files(self) -> bool:
-
         with get_db() as db:
-
             try:
                 db.query(File).delete()
                 db.commit()

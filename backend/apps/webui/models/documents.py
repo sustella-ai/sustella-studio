@@ -70,12 +70,10 @@ class DocumentForm(DocumentUpdateForm):
 
 
 class DocumentsTable:
-
     def insert_new_doc(
         self, user_id: str, form_data: DocumentForm
     ) -> Optional[DocumentModel]:
         with get_db() as db:
-
             document = DocumentModel(
                 **{
                     **form_data.model_dump(),
@@ -99,7 +97,6 @@ class DocumentsTable:
     def get_doc_by_name(self, name: str) -> Optional[DocumentModel]:
         try:
             with get_db() as db:
-
                 document = db.query(Document).filter_by(name=name).first()
                 return DocumentModel.model_validate(document) if document else None
         except:
@@ -107,7 +104,6 @@ class DocumentsTable:
 
     def get_docs(self) -> List[DocumentModel]:
         with get_db() as db:
-
             return [
                 DocumentModel.model_validate(doc) for doc in db.query(Document).all()
             ]
@@ -117,7 +113,6 @@ class DocumentsTable:
     ) -> Optional[DocumentModel]:
         try:
             with get_db() as db:
-
                 db.query(Document).filter_by(name=name).update(
                     {
                         "title": form_data.title,
@@ -140,7 +135,6 @@ class DocumentsTable:
             doc_content = {**doc_content, **updated}
 
             with get_db() as db:
-
                 db.query(Document).filter_by(name=name).update(
                     {
                         "content": json.dumps(doc_content),
@@ -156,7 +150,6 @@ class DocumentsTable:
     def delete_doc_by_name(self, name: str) -> bool:
         try:
             with get_db() as db:
-
                 db.query(Document).filter_by(name=name).delete()
                 db.commit()
                 return True

@@ -113,7 +113,6 @@ class ModelForm(BaseModel):
 
 
 class ModelsTable:
-
     def insert_new_model(
         self, form_data: ModelForm, user_id: str
     ) -> Optional[ModelModel]:
@@ -126,9 +125,7 @@ class ModelsTable:
             }
         )
         try:
-
             with get_db() as db:
-
                 result = Model(**model.model_dump())
                 db.add(result)
                 db.commit()
@@ -144,13 +141,11 @@ class ModelsTable:
 
     def get_all_models(self) -> List[ModelModel]:
         with get_db() as db:
-
             return [ModelModel.model_validate(model) for model in db.query(Model).all()]
 
     def get_model_by_id(self, id: str) -> Optional[ModelModel]:
         try:
             with get_db() as db:
-
                 model = db.get(Model, id)
                 return ModelModel.model_validate(model)
         except:
@@ -178,7 +173,6 @@ class ModelsTable:
     def delete_model_by_id(self, id: str) -> bool:
         try:
             with get_db() as db:
-
                 db.query(Model).filter_by(id=id).delete()
                 db.commit()
 

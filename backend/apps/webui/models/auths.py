@@ -92,7 +92,6 @@ class AddUserForm(SignupForm):
 
 
 class AuthsTable:
-
     def insert_new_auth(
         self,
         email: str,
@@ -103,7 +102,6 @@ class AuthsTable:
         oauth_sub: Optional[str] = None,
     ) -> Optional[UserModel]:
         with get_db() as db:
-
             log.info("insert_new_auth")
 
             id = str(uuid.uuid4())
@@ -130,7 +128,6 @@ class AuthsTable:
         log.info(f"authenticate_user: {email}")
         try:
             with get_db() as db:
-
                 auth = db.query(Auth).filter_by(email=email, active=True).first()
                 if auth:
                     if verify_password(password, auth.password):
@@ -189,7 +186,6 @@ class AuthsTable:
     def delete_auth_by_id(self, id: str) -> bool:
         try:
             with get_db() as db:
-
                 # Delete User
                 result = Users.delete_user_by_id(id)
 

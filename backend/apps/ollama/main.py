@@ -283,7 +283,6 @@ async def get_ollama_tags(
 async def get_ollama_versions(url_idx: Optional[int] = None):
     if app.state.config.ENABLE_OLLAMA_API:
         if url_idx == None:
-
             # returns lowest version
             tasks = [
                 fetch_url(f"{url}/api/version")
@@ -603,7 +602,6 @@ def generate_ollama_embeddings(
     form_data: GenerateEmbeddingsForm,
     url_idx: Optional[int] = None,
 ):
-
     log.info(f"generate_ollama_embeddings {form_data}")
 
     if url_idx == None:
@@ -674,7 +672,6 @@ async def generate_completion(
     url_idx: Optional[int] = None,
     user=Depends(get_verified_user),
 ):
-
     if url_idx == None:
         model = form_data.model
 
@@ -720,7 +717,6 @@ async def generate_chat_completion(
     url_idx: Optional[int] = None,
     user=Depends(get_verified_user),
 ):
-
     log.debug(
         "form_data.model_dump_json(exclude_none=True).encode(): {0} ".format(
             form_data.model_dump_json(exclude_none=True).encode()
@@ -752,7 +748,6 @@ async def generate_chat_completion(
                 )
 
             if model_info.params.get("mirostat_tau", None):
-
                 payload["options"]["mirostat_tau"] = model_info.params.get(
                     "mirostat_tau", None
                 )
@@ -1130,7 +1125,6 @@ async def download_model(
     url_idx: Optional[int] = None,
     user=Depends(get_admin_user),
 ):
-
     allowed_hosts = ["https://huggingface.co/", "https://github.com/"]
 
     if not any(form_data.url.startswith(host) for host in allowed_hosts):

@@ -79,13 +79,10 @@ class ToolValves(BaseModel):
 
 
 class ToolsTable:
-
     def insert_new_tool(
         self, user_id: str, form_data: ToolForm, specs: List[dict]
     ) -> Optional[ToolModel]:
-
         with get_db() as db:
-
             tool = ToolModel(
                 **{
                     **form_data.model_dump(),
@@ -112,7 +109,6 @@ class ToolsTable:
     def get_tool_by_id(self, id: str) -> Optional[ToolModel]:
         try:
             with get_db() as db:
-
                 tool = db.get(Tool, id)
                 return ToolModel.model_validate(tool)
         except:
@@ -125,7 +121,6 @@ class ToolsTable:
     def get_tool_valves_by_id(self, id: str) -> Optional[dict]:
         try:
             with get_db() as db:
-
                 tool = db.get(Tool, id)
                 return tool.valves if tool.valves else {}
         except Exception as e:
@@ -135,7 +130,6 @@ class ToolsTable:
     def update_tool_valves_by_id(self, id: str, valves: dict) -> Optional[ToolValves]:
         try:
             with get_db() as db:
-
                 db.query(Tool).filter_by(id=id).update(
                     {"valves": valves, "updated_at": int(time.time())}
                 )

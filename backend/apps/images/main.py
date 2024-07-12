@@ -265,7 +265,6 @@ def get_models(user=Depends(get_verified_user)):
                 {"id": "dall-e-3", "name": "DALL·E 3"},
             ]
         elif app.state.config.ENGINE == "comfyui":
-
             r = requests.get(url=f"{app.state.config.COMFYUI_BASE_URL}/object_info")
             info = r.json()
 
@@ -397,7 +396,6 @@ def save_url_image(url):
         r = requests.get(url)
         r.raise_for_status()
         if r.headers["content-type"].split("/")[0] == "image":
-
             mime_type = r.headers["content-type"]
             image_format = mimetypes.guess_extension(mime_type)
 
@@ -430,7 +428,6 @@ def generate_image(
     r = None
     try:
         if app.state.config.ENGINE == "openai":
-
             headers = {}
             headers["Authorization"] = f"Bearer {app.state.config.OPENAI_API_KEY}"
             headers["Content-Type"] = "application/json"
@@ -471,7 +468,6 @@ def generate_image(
             return images
 
         elif app.state.config.ENGINE == "comfyui":
-
             data = {
                 "prompt": form_data.prompt,
                 "width": width,

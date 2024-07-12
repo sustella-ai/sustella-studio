@@ -277,7 +277,6 @@ async def generate_function_chat_completion(form_data, user):
             function_module = app.state.FUNCTIONS[pipe_id]
 
         if hasattr(function_module, "valves") and hasattr(function_module, "Valves"):
-
             valves = Functions.get_function_valves_by_id(pipe_id)
             function_module.valves = function_module.Valves(
                 **(valves if valves else {})
@@ -374,7 +373,6 @@ async def generate_function_chat_completion(form_data, user):
 
             return StreamingResponse(stream_content(), media_type="text/event-stream")
         else:
-
             try:
                 if inspect.iscoroutinefunction(pipe):
                     res = await pipe(**params)
